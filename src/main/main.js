@@ -125,6 +125,25 @@ const registerShortcut = () => {
     } catch { /* atajo no válido */ }
     return false
 }
+// ---------- posición del puntero ----------
+// En Windows la barra superior es una zona de arrastre y la página no recibe
+// eventos del ratón sobre ella, así que el proceso principal comprueba dónde
+// está el puntero y avisa a la interfaz: 'out' (fuera), 'top' (sobre la barra)
+// o 'in' (sobre el texto).
+const watchPointer = () => {
+    let last = null
+    setInterval(() => {
+        if (!win || win.isDestroyed() || !win.isVisible()) return
+        const p = screen.getCursorScreenPoint()
+        const b = win.getBounds()
+        const inside = p.x >= b.x && p.x < b.x + b.width && p.y >= b.y && p.y < b.y + b.height
+        const zone = !inside ? 'out' : p.y - b.y < 36 ? 'top' : 'in'
+        if (zone !== last) {
+            last = zone
+            win.webContents.send('pointer', zone)
+        }
+    }, 100)
+}
 
 // ---------- bandeja del sistema ----------
 
@@ -293,6 +312,7 @@ app.whenReady().then(() => {
     registerIPC()
     createWindow()
     createTray()
+    watchPointer()
     win.webContents.once('did-finish-load', () => openFromArgs(process.argv))
 })
 
