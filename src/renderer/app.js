@@ -263,6 +263,7 @@ const togglePanel = force => {
 // ---------- barra que se oculta sola ----------
 
 let barTimer
+let pointerZone = 'in' // 'out', 'top' o 'in'; lo envía el proceso principal
 const showBar = () => {
     document.body.classList.add('bar-visible')
     clearTimeout(barTimer)
@@ -270,16 +271,23 @@ const showBar = () => {
 }
 const hideBar = () => {
     clearTimeout(barTimer)
-    if ($('#bar').matches(':hover') || !$('#themes').hidden) { barTimer = setTimeout(hideBar, 1500); return }
+    // no se oculta mientras el puntero está encima de la barra o el menú de colores está abierto
+    if (pointerZone === 'top' || !$('#themes').hidden) { barTimer = setTimeout(hideBar, 1000); return }
     document.body.classList.remove('bar-visible')
+}
+const onPointerZone = zone => {
+    const before = pointerZone
+    pointerZone = zone
+    if (zone === 'top' || (zone === 'in' && before === 'out')) showBar()
+    else if (zone === 'out') {
+        clearTimeout(barTimer)
+        barTimer = setTimeout(hideBar, 500)
+    }
 }
 const watchPointer = doc => {
     doc.addEventListener('mousemove', showBar, { passive: true })
-    doc.documentElement.addEventListener('mouseleave', () => {
-        clearTimeout(barTimer)
-        barTimer = setTimeout(hideBar, 400)
-    })
 }
+
 
 // ---------- navegación ----------
 
@@ -595,6 +603,7 @@ const init = async () => {
     window.addEventListener('resize', debounce(applyLayout, 150))
 
     api.onSettingsChanged(s => { settings = s; applySettings() })
+    api.onPointer(onPointerZone)
     api.onOpenPath(openPath)
 
     applySettings()
