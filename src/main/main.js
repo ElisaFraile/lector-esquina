@@ -30,6 +30,9 @@ let store
 let win = null
 let tray = null
 let registeredShortcut = null
+let quitting = false
+// al arrancar con Windows la app se abre oculta, esperando el atajo
+const startHidden = process.argv.includes('--oculta')
 const libraryDir = () => path.join(app.getPath('userData'), 'libros')
 
 // ---------- ventana ----------
@@ -69,7 +72,7 @@ const createWindow = () => {
     })
     applyWindowSettings()
     win.loadURL('app://lector/index.html')
-    win.once('ready-to-show', () => win.show())
+    win.once('ready-to-show', () => { if (!startHidden) win.show() })
 
     const saveBounds = () => {
         if (!win.isMinimized() && !win.isMaximized()) store.set({ bounds: win.getBounds() })
@@ -78,7 +81,14 @@ const createWindow = () => {
     win.on('resized', saveBounds)
     win.on('move', saveBounds)
     win.on('resize', saveBounds)
-    win.on('close', () => saveBounds())
+    win.on('close', e => {
+        saveBounds()
+        // cerrar la ventana no cierra la app: sigue en la bandeja para que el atajo funcione
+        if (!quitting && store.data.settings.closeToTray) {
+            e.preventDefault()
+            hideToTray()
+        }
+    })
     win.on('closed', () => { win = null })
 
     // los enlaces externos de los libros se abren en el navegador
@@ -97,18 +107,48 @@ const applyWindowSettings = () => {
     win.setOpacity(Math.min(1, Math.max(0.15, st.opacity)))
     win.setSkipTaskbar(!st.showInTaskbar)
     registerShortcut()
+    applyLoginItem()
     updateTrayMenu()
 }
 
-const toggleDiscreet = () => {
+const showWindow = () => {
     if (!win) return createWindow()
-    if (win.isVisible() && !win.isMinimized()) win.hide()
-    else {
-        win.showInactive()
-        if (win.isMinimized()) win.restore()
-        win.setAlwaysOnTop(!!store.data.settings.alwaysOnTop, 'screen-saver')
-    }
+    if (win.isMinimized()) win.restore()
+    win.setAlwaysOnTop(!!store.data.settings.alwaysOnTop, 'screen-saver')
+    win.show()
+    win.moveTop()
+    win.focus()
     updateTrayMenu()
+}
+
+const hideToTray = () => {
+    win?.hide()
+    updateTrayMenu()
+    // la primera vez se explica dónde ha ido la ventana
+    if (tray && !store.data.trayHintShown && process.platform === 'win32') {
+        const accel = store.data.settings.shortcut
+        tray.displayBalloon({
+            title: 'Lector Esquina sigue abierto',
+            content: accel ? `Pulsa ${accel.replace('CommandOrControl', 'Ctrl')} para volver a mostrarlo.`
+                : 'Haz clic en este icono para volver a mostrarlo.',
+            iconType: 'info',
+        })
+        store.set({ trayHintShown: true })
+    }
+}
+
+// Atajo global: si la ventana se ve (y no está tapada por otra), se oculta;
+// en cualquier otro caso se muestra delante de todo.
+const toggleDiscreet = () => {
+    if (!win) return showWindow()
+    const shown = win.isVisible() && !win.isMinimized()
+    if (shown && (win.isFocused() || store.data.settings.alwaysOnTop)) hideToTray()
+    else showWindow()
+}
+
+const applyLoginItem = () => {
+    if (process.platform !== 'win32' || !app.isPackaged) return
+    app.setLoginItemSettings({ openAtLogin: !!store.data.settings.startWithWindows, args: ['--oculta'] })
 }
 
 const registerShortcut = () => {
@@ -125,6 +165,7 @@ const registerShortcut = () => {
     } catch { /* atajo no válido */ }
     return false
 }
+
 // ---------- posición del puntero ----------
 // En Windows la barra superior es una zona de arrastre y la página no recibe
 // eventos del ratón sobre ella, así que el proceso principal comprueba dónde
@@ -159,7 +200,7 @@ const updateTrayMenu = () => {
     if (!tray) return
     const st = store.data.settings
     tray.setContextMenu(Menu.buildFromTemplate([
-        { label: win?.isVisible() ? 'Ocultar (modo discreto)' : 'Mostrar', click: toggleDiscreet },
+        { label: win?.isVisible() ? 'Ocultar (modo discreto)' : 'Mostrar', click: () => win?.isVisible() ? hideToTray() : showWindow() },
         {
             label: 'Siempre encima', type: 'checkbox', checked: !!st.alwaysOnTop,
             click: item => setSettings({ alwaysOnTop: item.checked }),
@@ -224,7 +265,10 @@ const safeLibraryPath = name => {
 
 const openFromArgs = argv => {
     const file = argv.slice(app.isPackaged ? 1 : 2).find(a => SUPPORTED.includes(extOf(a)) && fs.existsSync(a))
-    if (file && win) win.webContents.send('open-path', file)
+    if (file && win) {
+        win.webContents.send('open-path', file)
+        showWindow()
+    }
     return file
 }
 
@@ -291,9 +335,12 @@ const registerIPC = () => {
     })
     ipcMain.handle('book:show-file', (_, p) => shell.showItemInFolder(p))
 
-    ipcMain.on('win:hide', () => { win?.hide(); updateTrayMenu() })
+    ipcMain.on('win:hide', hideToTray)
     ipcMain.on('win:minimize', () => win?.minimize())
-    ipcMain.on('win:close', () => { app.quit() })
+    ipcMain.on('win:close', () => {
+        if (store.data.settings.closeToTray) hideToTray()
+        else app.quit()
+    })
     ipcMain.on('win:reset-position', resetPosition)
 }
 
@@ -317,13 +364,11 @@ app.whenReady().then(() => {
 })
 
 app.on('second-instance', (_, argv) => {
-    if (!win) return
-    if (!openFromArgs(argv)) {
-        win.show()
-        if (win.isMinimized()) win.restore()
-    }
+    // abrir la app otra vez (o un libro con doble clic) muestra la ventana
+    openFromArgs(argv)
+    showWindow()
 })
 
-app.on('before-quit', () => { store?.flush() })
+app.on('before-quit', () => { quitting = true; store?.flush() })
 app.on('will-quit', () => globalShortcut.unregisterAll())
-app.on('window-all-closed', () => app.quit())
+app.on('window-all-closed', () => { if (!store?.data.settings.closeToTray) app.quit() })

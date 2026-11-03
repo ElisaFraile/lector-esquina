@@ -167,7 +167,7 @@ const syncPanel = () => {
         $(`#out-${key}`).textContent = fmt(settings[key])
     }
     for (const key of ['fontFamily', 'theme', 'flow']) $(`#${key}`).value = settings[key]
-    for (const key of ['autoAdvance', 'showProgress', 'alwaysOnTop', 'autoHideBar', 'showInTaskbar', 'escHides'])
+    for (const key of ['autoAdvance', 'showProgress', 'alwaysOnTop', 'autoHideBar', 'showInTaskbar', 'escHides', 'closeToTray', 'startWithWindows'])
         $(`#${key}`).checked = !!settings[key]
     $('#autoSeconds').disabled = !settings.autoAdvance
     $('#shortcut').value = prettyShortcut(settings.shortcut)
@@ -186,7 +186,7 @@ const setupPanel = () => {
     }
     for (const key of ['fontFamily', 'theme', 'flow'])
         $(`#${key}`).addEventListener('change', e => saveSettings({ [key]: e.target.value }))
-    for (const key of ['autoAdvance', 'showProgress', 'alwaysOnTop', 'autoHideBar', 'showInTaskbar', 'escHides'])
+    for (const key of ['autoAdvance', 'showProgress', 'alwaysOnTop', 'autoHideBar', 'showInTaskbar', 'escHides', 'closeToTray', 'startWithWindows'])
         $(`#${key}`).addEventListener('change', e => {
             if (key === 'autoAdvance') autoPaused = false
             saveSettings({ [key]: e.target.checked })
@@ -287,7 +287,6 @@ const onPointerZone = zone => {
 const watchPointer = doc => {
     doc.addEventListener('mousemove', showBar, { passive: true })
 }
-
 
 // ---------- navegación ----------
 
