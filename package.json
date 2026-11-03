@@ -1,0 +1,83 @@
+{
+  "name": "lector-esquina",
+  "productName": "Lector Esquina",
+  "version": "1.0.0",
+  "description": "Lector de libros MOBI, EPUB y PDF en una ventana pequeña y discreta",
+  "main": "src/main/main.js",
+  "author": "Elisa Fraile",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.mjs",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:linux": "electron-builder --linux AppImage --publish never"
+  },
+  "devDependencies": {
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
+    "fflate": "^0.8.3"
+  },
+  "build": {
+    "appId": "com.elisa.lectoresquina",
+    "productName": "Lector Esquina",
+    "copyright": "© 2026 Elisa Fraile",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "build/icon.png",
+      "package.json",
+      "!**/*.map"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "executableName": "LectorEsquina"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Lector Esquina",
+      "installerLanguages": [
+        "es_ES"
+      ],
+      "language": "3082",
+      "artifactName": "LectorEsquina-Setup-${version}.${ext}"
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "mobi",
+          "azw",
+          "azw3",
+          "prc",
+          "epub",
+          "fb2"
+        ],
+        "name": "Libro electrónico",
+        "description": "Libro electrónico",
+        "role": "Viewer"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office",
+      "icon": "build/icon.png"
+    }
+  }
+}

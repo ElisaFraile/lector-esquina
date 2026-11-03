@@ -1,0 +1,2 @@
+Copia de https://github.com/johnfactotum/foliate-js (commit 78914ae, licencia MIT)
+Se han quitado vendor/pdfjs/cmaps y standard_fonts: la app convierte los PDF a texto sin usarlos.

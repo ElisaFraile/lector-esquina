@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data:; script-src 'self'; style-src 'self' 'unsafe-inline' blob:; img-src 'self' blob: data:; font-src 'self' blob: data:; worker-src 'self' blob:; connect-src 'self' blob: data:; frame-src blob: 'self'; object-src 'none'">
+<title>Lector Esquina</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header id="bar">
+  <button id="btn-menu" title="Ajustes (M)" aria-label="Ajustes">
+    <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+  <button id="btn-open" class="opt" title="Abrir libro (Ctrl+O)" aria-label="Abrir libro">
+    <svg viewBox="0 0 24 24"><path d="M3 7h6l2 2h10v10H3z"/></svg>
+  </button>
+  <button id="btn-smaller" class="opt2" title="Letra más pequeña (−)" aria-label="Letra más pequeña"><span class="aa">A</span>−</button>
+  <button id="btn-bigger" class="opt2" title="Letra más grande (+)" aria-label="Letra más grande"><span class="aa big">A</span>+</button>
+  <button id="btn-auto" class="opt3" title="Avance automático (P)" aria-label="Avance automático" hidden>
+    <svg viewBox="0 0 24 24" class="play"><path d="M8 5v14l11-7z"/></svg>
+    <svg viewBox="0 0 24 24" class="pause"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+  </button>
+  <div id="title" class="drag"></div>
+  <span id="percent" class="drag opt2"></span>
+  <button id="btn-theme" class="opt2" title="Color de la página (T)" aria-label="Color de la página">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" class="fill"/></svg>
+  </button>
+  <button id="btn-pin" class="opt" title="Siempre encima" aria-label="Siempre encima">
+    <svg viewBox="0 0 24 24"><path d="M9 3h6l-1 6 4 4H6l4-4zM12 13v8"/></svg>
+  </button>
+  <button id="btn-hide" title="Modo discreto: ocultar (Esc)" aria-label="Ocultar">
+    <svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
+  </button>
+  <button id="btn-close" title="Cerrar" aria-label="Cerrar">
+    <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+  </button>
+</header>
+
+<main id="reader"></main>
+
+<section id="welcome" class="drag">
+  <div class="nodrag">
+    <p><strong>Lector Esquina</strong></p>
+    <p>Arrastra aquí un libro<br>(MOBI, AZW3, EPUB o PDF)</p>
+    <button id="btn-open-welcome">Abrir libro…</button>
+  </div>
+</section>
+
+<div id="themes" hidden role="menu" aria-label="Color de la página">
+  <button data-theme="light" title="Blanco"><span class="sw sw-light"></span><span class="lbl">Blanco</span></button>
+  <button data-theme="sepia" title="Sepia"><span class="sw sw-sepia"></span><span class="lbl">Sepia</span></button>
+  <button data-theme="gray" title="Gris suave"><span class="sw sw-gray"></span><span class="lbl">Gris</span></button>
+  <button data-theme="dark" title="Oscuro"><span class="sw sw-dark"></span><span class="lbl">Oscuro</span></button>
+  <button data-theme="black" title="Negro"><span class="sw sw-black"></span><span class="lbl">Negro</span></button>
+  <button data-theme="auto" title="Automático: claro u oscuro según Windows"><span class="sw sw-auto"></span><span class="lbl">Auto</span></button>
+</div>
+
+<div id="status" hidden><div id="status-text"></div><div id="status-bar"><div></div></div></div>
+<div id="progress"><div></div></div>
+<div id="drop" hidden>Suelta el libro aquí</div>
+
+<aside id="panel" hidden>
+  <div class="panel-head drag">
+    <strong>Ajustes</strong>
+    <button id="btn-panel-close" class="nodrag" aria-label="Cerrar ajustes">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="panel-body">
+    <h3>Libro</h3>
+    <p id="book-info" class="muted">No hay ningún libro abierto.</p>
+    <div class="row wrap">
+      <button id="btn-open2">Abrir otro libro…</button>
+      <button id="btn-remove" class="needs-book">Quitar libro</button>
+    </div>
+    <div class="row wrap">
+      <button id="btn-export-epub" class="needs-book">Guardar como EPUB</button>
+      <button id="btn-export-mobi" class="needs-book">Guardar como MOBI</button>
+    </div>
+    <p class="muted small">Los PDF se convierten a texto para poder cambiar el tamaño de letra. La conversión guarda solo el texto (sin imágenes).</p>
+
+    <h3>Lectura</h3>
+    <label>Tamaño de letra <output id="out-fontSize"></output>
+      <input type="range" id="fontSize" min="8" max="40" step="1"></label>
+    <label>Interlineado <output id="out-lineHeight"></output>
+      <input type="range" id="lineHeight" min="1" max="2.2" step="0.05"></label>
+    <label>Márgenes <output id="out-margin"></output>
+      <input type="range" id="margin" min="0" max="40" step="1"></label>
+    <label>Tipo de letra
+      <select id="fontFamily">
+        <option value="serif">Con remates (Georgia)</option>
+        <option value="sans">Sin remates (Segoe UI)</option>
+        <option value="mono">Monoespaciada</option>
+        <option value="book">La del libro</option>
+      </select></label>
+    <label>Color de la página
+      <select id="theme">
+        <option value="light">Blanco</option>
+        <option value="sepia">Sepia</option>
+        <option value="gray">Gris suave</option>
+        <option value="dark">Oscuro</option>
+        <option value="black">Negro</option>
+        <option value="auto">Automático (claro u oscuro según Windows)</option>
+      </select></label>
+
+    <h3>Avance</h3>
+    <label>Modo
+      <select id="flow">
+        <option value="paginated">Por páginas (clic, flechas o rueda)</option>
+        <option value="scrolled">Desplazamiento continuo (scroll)</option>
+      </select></label>
+    <label class="check"><input type="checkbox" id="autoAdvance"> Avance automático</label>
+    <label>Cada <output id="out-autoSeconds"></output>
+      <input type="range" id="autoSeconds" min="3" max="120" step="1"></label>
+    <label class="check"><input type="checkbox" id="showProgress"> Mostrar barra de progreso</label>
+
+    <h3>Ventana</h3>
+    <label class="check"><input type="checkbox" id="alwaysOnTop"> Siempre encima de las demás ventanas</label>
+    <label>Opacidad <output id="out-opacity"></output>
+      <input type="range" id="opacity" min="0.15" max="1" step="0.05"></label>
+    <label class="check"><input type="checkbox" id="autoHideBar"> Ocultar la barra si el ratón no está encima</label>
+    <label class="check"><input type="checkbox" id="showInTaskbar"> Mostrar en la barra de tareas</label>
+    <label class="check"><input type="checkbox" id="escHides"> La tecla Esc oculta la ventana</label>
+    <label>Atajo del modo discreto (mostrar/ocultar desde cualquier programa)
+      <input type="text" id="shortcut" readonly placeholder="Haz clic y pulsa la combinación">
+    </label>
+    <p id="shortcut-msg" class="muted small"></p>
+    <div class="row wrap"><button id="btn-reset-pos">Volver a la esquina</button></div>
+
+    <h3>Atajos de teclado</h3>
+    <ul class="small muted keys">
+      <li><kbd>→</kbd> <kbd>Espacio</kbd> <kbd>AvPág</kbd>: siguiente página</li>
+      <li><kbd>←</kbd> <kbd>RePág</kbd>: página anterior</li>
+      <li><kbd>+</kbd> / <kbd>−</kbd>: tamaño de letra</li>
+      <li><kbd>T</kbd>: cambiar el color de la página (blanco, sepia, gris, oscuro, negro) · <kbd>D</kbd>: claro/oscuro</li>
+      <li><kbd>P</kbd>: pausar/reanudar el avance automático</li>
+      <li><kbd>M</kbd>: ajustes · <kbd>Ctrl+O</kbd>: abrir libro</li>
+      <li><kbd>Esc</kbd>: ocultar (modo discreto)</li>
+    </ul>
+    <p class="muted small">Para mover la ventana, arrástrala desde la barra superior. Para cambiar su tamaño, arrastra un borde o una esquina.</p>
+  </div>
+</aside>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
