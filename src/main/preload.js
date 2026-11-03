@@ -23,5 +23,6 @@ contextBridge.exposeInMainWorld('lector', {
     resetPosition: () => ipcRenderer.send('win:reset-position'),
 
     onSettingsChanged: cb => ipcRenderer.on('settings-changed', (_, s) => cb(s)),
+    onPointer: cb => ipcRenderer.on('pointer', (_, zone) => cb(zone)),
     onOpenPath: cb => ipcRenderer.on('open-path', (_, p) => cb(p)),
 })
